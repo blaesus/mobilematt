@@ -1,6 +1,3 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-
 interface UserInfo {
     __typename: 'UserInfo',
     description: string,
@@ -42,7 +39,7 @@ interface ArticleEdgeInner {
         "__typename" | "id" | "title" | "slug" | "cover" | "summary"
         | "mediaHash" | "live" | "author" | "subscribed" | "createdAt"
         | "MAT" | "responseCount" | "state"
-    >
+        >
 }
 
 interface ArticleEdgeOuter {
@@ -56,7 +53,7 @@ interface ArticleConnectionForRelatedArticles {
     edges: ArticleEdgeOuter[],
 }
 
-interface Article<U=User> {
+export interface Article<U=User> {
     __typename: 'Article',
     id: string,
     title: string,
@@ -81,22 +78,71 @@ interface Article<U=User> {
     responseCount: number,
     collectedBy: ArticleConnection,
     relatedArticles: ArticleConnectionForRelatedArticles,
-    dataHash: 'QmXNPzN8wrgUesnjaLBfzGq7JeyVbHKqMuiGQvXZ9aSFQT'
+    dataHash: string,
+    sticky: boolean
 }
 
-export default function App() {
-    return (
-        <View style={styles.container}>
-            <Text>Hello world!</Text>
-        </View>
-    );
+interface PageInfo {
+    __typename: 'PageInfo'
+    startCursor: string,
+    endCursor: string,
+    hasNextPage: boolean,
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#fff",
-        alignItems: "center",
-        justifyContent: "center",
+interface ArticleEdgeRecommendation {
+    __typename: 'ArticleEdge'
+    cursor: string,
+    node: Pick<
+        Article<Pick<User, "id" | "userName" | "displayName" | "avatar" | "__typename">>,
+        "id" | "title" | "slug" | "cover" | "summary" | "mediaHash" | "live" | "author" | "createdAt" |
+        "MAT" | "__typename" | "responseCount" | "subscribed" | "state" | "dataHash" | "sticky"
+        >,
+}
+
+export interface ArticleConnectionRecommendation {
+    __typename: 'ArticleConnection'
+    pageInfo: PageInfo,
+    edges: ArticleEdgeRecommendation[],
+}
+
+interface Recommendation {
+    __typename: 'Recommendation'
+    feed: ArticleConnectionRecommendation,
+}
+
+export type FeedSorting = "NewestFeed" | "HottestFeed";
+
+export interface FeedRequestParams {
+    operationName: FeedSorting
+    variables: {
+        hasArticleDigestActionAuthor: boolean,
+        hasArticleDigestActionBookmark: boolean,
+        hasArticleDigestActionTopicScore: boolean,
+        cursor?: string
     },
-});
+    extensions: {
+        persistedQuery: {
+            version: number,
+            sha256Hash: string
+        }
+    }
+}
+
+export interface FeedResponse {
+    data: {
+        viewer: {
+            __typename: "User"
+            id: string,
+            recommendation: Recommendation
+        }
+    }
+}
+
+export const requestHashs: {[key in FeedSorting]: string} = {
+    HottestFeed: "151fc988809d779515e92c2b9a2e4b1ae0a8046755ac69ab5643bfdad0f4b93b",
+    NewestFeed: "9e6c21a1e104f1ec36ed891b3ead9461a7f781a0f199b554a15f6f5e7babe1fd"
+}
+
+export interface FeedError {
+    error: {}[]
+}

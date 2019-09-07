@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "test",
-    "slug": "rn-test",
+    "name": "MobileMatters",
+    "slug": "mobilematt",
     "privacy": "public",
     "sdkVersion": "34.0.0",
     "platforms": [
@@ -9,9 +9,10 @@
       "android",
       "web"
     ],
-    "version": "1.0.0",
+    "version": "0.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "entryPoint": "./src/index.tsx",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -24,7 +25,11 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mobilemattorg.mobilematt"
+    },
+    "android": {
+      "package": "com.mobilemattorg.mobilematt"
     }
   }
 }
