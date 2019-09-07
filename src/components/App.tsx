@@ -1,5 +1,5 @@
 import React, { FunctionComponent, useState, useEffect } from "react";
-import { View, StyleSheet, Text, ScrollView, Image } from "react-native";
+import { View, StyleSheet, ScrollView } from "react-native";
 import {
     Article,
 } from "../api/api";
@@ -21,13 +21,13 @@ const globalStyles = StyleSheet.create({
 
 interface GlobalState {
     shouldLoad: boolean,
-    s: string
+    message: string
     articles: {[key in string]: Article}
 }
 
 const INITIAL_STATE: GlobalState = {
     shouldLoad: true,
-    s: "hello",
+    message: "Loading...",
     articles: {},
 };
 
@@ -50,7 +50,7 @@ const App: FunctionComponent<{}> = () => {
                 console.log("feed load failed")
                 setState({
                     ...state,
-                    s: "feed load failed",
+                    message: "feed load failed",
                     shouldLoad: false
                 })
             }

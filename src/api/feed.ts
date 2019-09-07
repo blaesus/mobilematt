@@ -17,7 +17,7 @@ interface LoadFeedFailure {
 }
 
 function feedParamsToUrl(base: string, params: FeedRequestParams): string {
-    let query = Object.entries(params)
+    const query = Object.entries(params)
                       .map(entry => {
                           if (entry[0] === "operationName") {
                               return `${entry[0]}=${entry[1]}`
@@ -33,7 +33,7 @@ function feedParamsToUrl(base: string, params: FeedRequestParams): string {
 
 
 export async function loadFeed(sorting: FeedSorting): Promise<LoadFeedSuccess | LoadFeedFailure> {
-    let params: FeedRequestParams = {
+    const params: FeedRequestParams = {
         operationName: sorting,
         variables: {
             hasArticleDigestActionAuthor: false,
@@ -47,10 +47,9 @@ export async function loadFeed(sorting: FeedSorting): Promise<LoadFeedSuccess | 
             }
         }
     }
-    let url = feedParamsToUrl(`https://server.matters.news/graphql`, params);
-    console.info(url)
-    let response = await fetch(url);
-    let data: FeedResponse | FeedError = await response.json();
+    const url = feedParamsToUrl(`https://server.matters.news/graphql`, params);
+    const response = await fetch(url);
+    const data: FeedResponse | FeedError = await response.json();
     if (data.hasOwnProperty("errors")) {
         let result: LoadFeedFailure = {
             ok: false
@@ -58,8 +57,8 @@ export async function loadFeed(sorting: FeedSorting): Promise<LoadFeedSuccess | 
         return result;
     }
     else {
-        let successData = data as FeedResponse;
-        let result: LoadFeedSuccess = {
+        const successData = data as FeedResponse;
+        const result: LoadFeedSuccess = {
             ok: true,
             recommendation: successData.data.viewer.recommendation.feed
         }
