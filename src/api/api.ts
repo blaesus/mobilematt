@@ -164,7 +164,7 @@ query($mediaHash: String!) {
     content
     slug,
     
-    comments(input: {sort: newest}) {
+    comments(input: {sort: newest, first: 200}) {
       totalCount,
       edges {
         node {
