@@ -1,10 +1,11 @@
 import React, { FunctionComponent } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { Article } from "../api/api";
-import TagLine from "./TagLine";
+import { ArticleDigest, UserCore } from "../api/api";
+import AuthorTag from "./AuthorTag";
 
 interface ArticleViewProps {
-    article: Article
+    digest: ArticleDigest,
+    author: UserCore,
 }
 
 const threadSummaryStyles = StyleSheet.create({
@@ -25,16 +26,12 @@ const threadSummaryStyles = StyleSheet.create({
 });
 
 const ThreadSummary: FunctionComponent<ArticleViewProps> = (props: ArticleViewProps) => {
-    const { article } = props;
+    const { digest, author } = props;
     return (
         <View style={threadSummaryStyles.containers}>
-            <Text style={threadSummaryStyles.title}>{article.title}</Text>
-            <TagLine
-                date={+new Date(article.createdAt)}
-                authorName={article.author.displayName}
-                authorProfileUrl={article.author.avatar}
-            />
-            <Text>{article.summary}</Text>
+            <Text style={threadSummaryStyles.title}>{digest.title}</Text>
+            <AuthorTag userId={author.id} />
+            <Text>{digest.summary}</Text>
         </View>
     )
 

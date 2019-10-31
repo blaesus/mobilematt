@@ -1,60 +1,87 @@
-interface UserInfo {
-    __typename: 'UserInfo',
-    description: string,
-}
+import ApolloClient from "apollo-boost";
+import gql from "graphql-tag";
+import { last } from "../utils";
 
-interface User {
-    __typename: 'User',
+export interface UserCore {
     id: string,
+    uuid: string,
     userName: string,
     displayName: string,
-    info: UserInfo,
     avatar: string,
-    isFollower: false,
-    isFollowee: false
 }
 
-interface ArticleConnection {
-    __typename: 'ArticleConnection',
-    totalCount: number,
+export interface Article {
+    id: string,
+    topicScore: number
+    slug: string,
+    createdAt: string,
+    title: string,
+    mediaHash: string,
+    state: string,
+    public: boolean,
+    live: boolean,
+    cover: string | null,
+    summary: string,
+    author: string,
+    dataHash: string,
+    sticky: boolean,
+    content: string,
+    comments: Comment[],
 }
 
-interface UserEdge {
-    __typename: 'UserEdge'
-    cursor: string,
-    node: Pick<User, "id" | "userName" | "displayName" | "avatar" >,
+export type ArticleDigest = Pick<
+    Article,
+    "id" | "title" | "author" | "summary" | "mediaHash"
+    | "createdAt"
+>
+
+export interface Comment {
+    id: string,
+    createdAt: number,
+    content: string,
+    author: string,
+    parent: string,
+    replyTarget: string | null,
 }
 
-interface UserConnection {
-    __typename: 'UserConnection',
-    totalCount: number,
-    edger: UserEdge[]
-}
+const client = new ApolloClient({
+    uri: "https://server.matters.news/graphql"
+});
 
-interface ArticleEdgeInner {
-    __typename: 'ArticleEdge'
-    cursor: string,
-    node: Pick<
-        Article<Pick<User, "__typename" | "id" | "userName" | "displayName">>,
-        "__typename" | "id" | "title" | "slug" | "cover" | "summary"
-        | "mediaHash" | "live" | "author" | "subscribed" | "createdAt"
-        | "MAT" | "responseCount" | "state"
-        >
-}
+const articleSummaryNewest = gql`
+    query($first: Int!, $after: String) {
+      viewer {
+        recommendation {
+          newest(input: {first: $first, after: $after}) {
+            edges {
+              cursor,
+              node {
+                id,
+                title,
+                slug,
+                cover,
+                public,
+                live,
+                author {
+                    id,
+                    uuid,
+                    userName,
+                    displayName,
+                    avatar,
+                },
+                dataHash,
+                sticky,
+                summary,
+                mediaHash,
+              }
+            }
+          }
+        }
+      }
+    }
+`
 
-interface ArticleEdgeOuter {
-    __typename: 'ArticleEdge'
-    cursor: string,
-    node: ArticleEdgeInner[],
-}
-
-interface ArticleConnectionForRelatedArticles {
-    __typename: 'ArticleConnection',
-    edges: ArticleEdgeOuter[],
-}
-
-export interface Article<U=User> {
-    __typename: 'Article',
+interface ArticleSummaryResponseInner {
     id: string,
     title: string,
     slug: string,
@@ -65,84 +92,182 @@ export interface Article<U=User> {
     cover: string | null,
     summary: string,
     createdAt: string,
-    author: U,
-    collection: ArticleConnection,
-    subscribed: boolean,
-    content: string,
-    tags: [],
-    MAT: number,
-    hasAppreciate: boolean,
-    appreciateLimit: number,
-    appreciateLeft: number,
-    appreciators: UserConnection[],
-    responseCount: number,
-    collectedBy: ArticleConnection,
-    relatedArticles: ArticleConnectionForRelatedArticles,
+    author: UserCore,
     dataHash: string,
     sticky: boolean
 }
 
-interface PageInfo {
-    __typename: 'PageInfo'
-    startCursor: string,
-    endCursor: string,
-    hasNextPage: boolean,
-}
 
-interface ArticleEdgeRecommendation {
-    __typename: 'ArticleEdge'
-    cursor: string,
-    node: Pick<
-        Article<Pick<User, "id" | "userName" | "displayName" | "avatar" | "__typename">>,
-        "id" | "title" | "slug" | "cover" | "summary" | "mediaHash" | "live" | "author" | "createdAt" |
-        "MAT" | "__typename" | "responseCount" | "subscribed" | "state" | "dataHash" | "sticky"
-        >,
-}
-
-export interface ArticleConnectionRecommendation {
-    __typename: 'ArticleConnection'
-    pageInfo: PageInfo,
-    edges: ArticleEdgeRecommendation[],
-}
-
-interface Recommendation {
-    __typename: 'Recommendation'
-    feed: ArticleConnectionRecommendation,
-}
-
-export type FeedSorting = "NewestFeed" | "HottestFeed";
-
-export interface FeedRequestParams {
-    operationName: FeedSorting
-    variables: {
-        hasArticleDigestActionAuthor: boolean,
-        hasArticleDigestActionBookmark: boolean,
-        hasArticleDigestActionTopicScore: boolean,
-        cursor?: string
-    },
-    extensions: {
-        persistedQuery: {
-            version: number,
-            sha256Hash: string
+interface ArticleSummaryResponse {
+    viewer: {
+        recommendation: {
+            newest: {
+                edges: {
+                    cursor: string,
+                    node: ArticleSummaryResponseInner
+                }[]
+            }
         }
     }
 }
 
-export interface FeedResponse {
-    data: {
-        viewer: {
-            __typename: "User"
-            id: string,
-            recommendation: Recommendation
+
+export async function fetchNewest(
+    count: number,
+    cursor?: string
+): Promise<{summaries: ArticleDigest[], authors: UserCore[], lastCursor: string}> {
+    const response = await client.query<ArticleSummaryResponse>({
+        query: articleSummaryNewest,
+        variables: {
+            first: count,
+            after: cursor,
         }
+    });
+    const edges = response.data.viewer.recommendation.newest.edges;
+    const summaries: ArticleDigest[] = edges.map(edge => ({
+        ...edge.node,
+        author: edge.node.author.id,
+    }));
+    const authors: UserCore[] = edges.map(edge => edge.node.author);
+    const lastCursor = last(edges).cursor;
+    console.info(response.data.viewer.recommendation);
+    return {
+        summaries,
+        lastCursor,
+        authors,
+    };
+}
+
+const fetchOneArticleQuery = gql`
+query($mediaHash: String!) {
+ article(input: {mediaHash: $mediaHash}) {
+    id
+    topicScore
+    slug
+    createdAt
+    title
+    mediaHash
+    state
+    public
+    live
+    cover
+    summary
+    author {
+       id,
+       uuid,
+       userName,
+       displayName,
+       avatar,
     }
+    dataHash
+    sticky
+    content
+    slug,
+    
+    comments(input: {sort: newest}) {
+      totalCount,
+      edges {
+        node {
+          id,
+          createdAt,
+          content,
+          author {
+            id,
+            uuid,
+            userName,
+            displayName,
+            avatar,
+          },
+          parentComment {
+            id,
+          },
+          replyTo {
+            id,
+          }
+        }
+      }
+    }
+ }
+}
+`;
+
+interface CommentResponseNode extends Omit<Comment, "author"| "replyTarget" | "parent" | "createdAt"> {
+    createdAt: string,
+    author: UserCore,
+    parentComment: {
+        id: string,
+    } | null,
+    replyTo: {
+        id: string,
+    } | null
 }
 
-export const requestHashs: {[key in FeedSorting]: string} = {
-    HottestFeed: "151fc988809d779515e92c2b9a2e4b1ae0a8046755ac69ab5643bfdad0f4b93b",
-    NewestFeed: "9e6c21a1e104f1ec36ed891b3ead9461a7f781a0f199b554a15f6f5e7babe1fd"
+interface ArticleResponseNode extends Omit<Article, "author" | "comments"> {
+    author: UserCore,
+    comments: {
+        edges: {
+            node: CommentResponseNode
+        }[]
+    }
+
 }
 
-export interface FeedError {
-    error: {}[]
+interface ArticleResponseData {
+    article: ArticleResponseNode | null
+}
+
+export async function fetchArticle(
+    mediaHash: string
+): Promise<{article: Article, authors: UserCore[]} | null> {
+    const response = await client.query<ArticleResponseData>({
+        query: fetchOneArticleQuery,
+        variables: {
+            mediaHash,
+        }
+    });
+    if (!response.data.article) {
+        return null
+    }
+    const comments: Comment[] = response.data.article.comments.edges.map(edge => ({
+        ...edge.node,
+        author: edge.node.author.id,
+        replyTarget: edge.node.replyTo && edge.node.replyTo.id,
+        parent: edge.node.parentComment && edge.node.parentComment.id,
+        createdAt: +new Date(edge.node.createdAt)
+    }));
+    const article: Article = {
+        ...response.data.article,
+        author: response.data.article.author.id,
+        comments,
+    };
+    const authors: UserCore[] = [
+        response.data.article.author,
+        ...response.data.article.comments.edges.map(edge => edge.node.author),
+    ];
+    return {
+        article,
+        authors,
+    };
+}
+
+const fetchUserQuery = gql`
+query($userName: String) {
+  user(userName: $userName) {
+    id
+  }
+}
+`;
+
+interface UserResponse {
+    id: string
+}
+
+export async function fetchUser(userName: string) {
+    const response = await client.query<UserResponse>({
+        query: fetchUserQuery,
+        variables: {
+            userName
+        }
+    });
+    console.info(response)
 }
